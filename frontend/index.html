@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评论情感分析</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-decoration">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">✦</span>
+                <h1>评论情感分析</h1>
+            </div>
+            <p class="subtitle">上传数据 → 智能分词 → 可视化分析</p>
+        </header>
+
+        <!-- 上传区域 -->
+        <section class="card upload-section" id="upload-section">
+            <div class="upload-zone" id="upload-zone">
+                <div class="upload-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <p class="upload-text">拖拽文件到此处，或点击选择</p>
+                <p class="upload-hint">支持 CSV / Excel / JSON 格式</p>
+                <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.json" hidden>
+            </div>
+        </section>
+
+        <!-- 数据预览 -->
+        <section class="card data-section hidden" id="data-section">
+            <div class="section-header">
+                <h2>📋 数据概览</h2>
+                <div class="header-right">
+                    <span class="file-name" id="file-name"></span>
+                    <button class="btn-change" id="change-file-btn">更换文件</button>
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">
+                    <span class="metric-value" id="total-rows">-</span>
+                    <span class="metric-label">总行数</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value" id="total-cols">-</span>
+                    <span class="metric-label">列数</span>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="preview-table">
+                    <thead id="table-head"></thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+
+            <!-- 设置 -->
+            <div class="settings">
+                <div class="setting-item">
+                    <label>评论所在列</label>
+                    <select id="column-select"></select>
+                </div>
+                <div class="setting-item">
+                    <label>高频词数量</label>
+                    <div class="slider-group">
+                        <input type="range" id="top-n" min="10" max="100" value="30" step="5">
+                        <span id="top-n-value">30</span>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>情感分析</label>
+                    <select id="sentiment-toggle">
+                        <option value="true">启用</option>
+                        <option value="false">关闭</option>
+                    </select>
+                </div>
+                <button class="btn-primary" id="analyze-btn">
+                    <span>✦ 开始分析</span>
+                </button>
+            </div>
+
+            <!-- 自定义停用词 -->
+            <div class="custom-stopwords-section">
+                <label>自定义停用词</label>
+                <div class="stopwords-input-group">
+                    <input type="text" id="stopwords-input" placeholder="输入词语，按回车或点击添加">
+                    <button class="btn-add-stopword" id="add-stopword-btn">添加</button>
+                </div>
+                <div class="stopwords-tags" id="stopwords-tags"></div>
+                <p class="stopwords-hint">自定义停用词会叠加到内置停用词表上，过滤后重新分析生效</p>
+            </div>
+        </section>
+
+        <!-- 加载状态 -->
+        <section class="card loading-section hidden" id="loading-section">
+            <div class="loader">
+                <div class="loader-spinner"></div>
+                <p>正在分析中，请稍候...</p>
+            </div>
+        </section>
+
+        <!-- 分析结果 -->
+        <section class="card result-section hidden" id="result-section">
+            <!-- 导出按钮 -->
+            <div class="export-bar">
+                <button class="btn-export" id="export-excel-btn">📥 导出 Excel</button>
+                <button class="btn-export" id="export-bar-btn">📊 导出条形图</button>
+                <button class="btn-export" id="export-wc-btn">☁️ 导出词云图</button>
+            </div>
+
+            <div class="result-summary">
+                <div class="summary-card">
+                    <span class="summary-value" id="result-total">-</span>
+                    <span class="summary-label">有效词数</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-value" id="result-unique">-</span>
+                    <span class="summary-label">不同词数</span>
+                </div>
+            </div>
+
+            <!-- 词频图 -->
+            <div class="chart-section">
+                <h2>📊 词频统计</h2>
+                <div class="chart-container" id="freq-chart"></div>
+            </div>
+
+            <!-- 词云图 -->
+            <div class="chart-section">
+                <h2>☁️ 词云图</h2>
+                <div class="wordcloud-container">
+                    <img id="wordcloud-img" alt="词云图">
+                </div>
+            </div>
+
+            <!-- 情感分析 -->
+            <div class="chart-section hidden" id="sentiment-section">
+                <h2>💬 情感分析</h2>
+                <div class="sentiment-grid">
+                    <div class="sentiment-chart-container">
+                        <img id="sentiment-img" alt="情感分布">
+                    </div>
+                    <div class="sentiment-stats" id="sentiment-stats"></div>
+                </div>
+
+                <!-- 筛选标签 -->
+                <div class="sentiment-filter">
+                    <div class="filter-tags">
+                        <button class="filter-tag active" data-label="all">全部</button>
+                        <button class="filter-tag" data-label="正面">正面</button>
+                        <button class="filter-tag" data-label="中性">中性</button>
+                        <button class="filter-tag" data-label="负面">负面</button>
+                    </div>
+                    <span class="filter-count" id="filter-count"></span>
+                </div>
+
+                <!-- 情感明细表格 -->
+                <div class="sentiment-table-wrapper">
+                    <table id="sentiment-table">
+                        <thead>
+                            <tr>
+                                <th style="width:60%">评论</th>
+                                <th class="sortable" data-sort="score" style="width:15%">
+                                    情感得分 <span class="sort-icon">↕</span>
+                                </th>
+                                <th style="width:15%">分类</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sentiment-tbody"></tbody>
+                    </table>
+                </div>
+
+                <!-- 分页 -->
+                <div class="pagination" id="pagination"></div>
+            </div>
+
+            <!-- 返回按钮 -->
+            <div class="action-bar">
+                <button class="btn-secondary" id="reanalyze-btn">← 返回修改</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
