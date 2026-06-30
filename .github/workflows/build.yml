@@ -64,14 +64,14 @@ jobs:
 
       - name: Copy Windows Chinese font
         run: |
-          mkdir -p app/resources/fonts
+          New-Item -ItemType Directory -Force -Path app/resources/fonts
           $fontPath = "C:\Windows\Fonts\msyh.ttc"
           if (Test-Path $fontPath) {
-            Copy-Item $fontPath app/resources/fonts/msyh.ttc
+            Copy-Item $fontPath app/resources/fonts/msyh.ttc -Force
             Write-Host "Copied msyh.ttc"
           } else {
             Write-Host "msyh.ttc not found, trying simhei.ttf"
-            Copy-Item "C:\Windows\Fonts\simhei.ttf" app/resources/fonts/simhei.ttf
+            Copy-Item "C:\Windows\Fonts\simhei.ttf" app/resources/fonts/simhei.ttf -Force
           }
 
       - name: Update font path for Windows
