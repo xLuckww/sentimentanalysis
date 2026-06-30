@@ -75,21 +75,14 @@ jobs:
           }
 
       - name: Update font path for Windows
+        shell: python
         run: |
-          python -c "
-          with open('app/core/visualizer.py', 'r') as f:
-              content = f.read()
-          content = content.replace(
-              \"_resource_path('app/resources/fonts/STHeiti.ttc')\",
-              \"_resource_path('app/resources/fonts/msyh.ttc')\"
-          )
-          content = content.replace(
-              \"'/System/Library/Fonts/STHeiti Medium.ttc'\",
-              \"'C:/Windows/Fonts/msyh.ttc'\"
-          )
-          with open('app/core/visualizer.py', 'w') as f:
-              f.write(content)
-          "
+          import pathlib
+          p = pathlib.Path('app/core/visualizer.py')
+          text = p.read_text()
+          text = text.replace("STHeiti.ttc", "msyh.ttc")
+          text = text.replace("/System/Library/Fonts/STHeiti Medium.ttc", "C:/Windows/Fonts/msyh.ttc")
+          p.write_text(text)
 
       - name: Build Windows exe
         run: pyinstaller sentiment.spec --noconfirm --clean
