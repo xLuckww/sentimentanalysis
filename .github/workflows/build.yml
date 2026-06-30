@@ -1,0 +1,111 @@
+name: Build Release
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build macOS app
+        run: pyinstaller sentiment.spec --noconfirm --clean
+
+      - name: Create DMG
+        run: |
+          TMP_DIR=$(mktemp -d)
+          cp -r dist/评论情感分析.app "$TMP_DIR/"
+          ln -s /Applications "$TMP_DIR/Applications"
+          hdiutil create -volname "评论情感分析" \
+            -srcfolder "$TMP_DIR" \
+            -ov -format UDZO \
+            评论情感分析-macOS.dmg
+          rm -rf "$TMP_DIR"
+
+      - name: Upload macOS DMG
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
+        with:
+          files: 评论情感分析-macOS.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-DMG
+          path: 评论情感分析-macOS.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Copy Windows Chinese font
+        run: |
+          mkdir -p app/resources/fonts
+          $fontPath = "C:\Windows\Fonts\msyh.ttc"
+          if (Test-Path $fontPath) {
+            Copy-Item $fontPath app/resources/fonts/msyh.ttc
+            Write-Host "Copied msyh.ttc"
+          } else {
+            Write-Host "msyh.ttc not found, trying simhei.ttf"
+            Copy-Item "C:\Windows\Fonts\simhei.ttf" app/resources/fonts/simhei.ttf
+          }
+
+      - name: Update font path for Windows
+        run: |
+          python -c "
+          with open('app/core/visualizer.py', 'r') as f:
+              content = f.read()
+          content = content.replace(
+              \"_resource_path('app/resources/fonts/STHeiti.ttc')\",
+              \"_resource_path('app/resources/fonts/msyh.ttc')\"
+          )
+          content = content.replace(
+              \"'/System/Library/Fonts/STHeiti Medium.ttc'\",
+              \"'C:/Windows/Fonts/msyh.ttc'\"
+          )
+          with open('app/core/visualizer.py', 'w') as f:
+              f.write(content)
+          "
+
+      - name: Build Windows exe
+        run: pyinstaller sentiment.spec --noconfirm --clean
+
+      - name: Create ZIP package
+        run: |
+          Compress-Archive -Path dist/评论情感分析/* -DestinationPath 评论情感分析-Windows.zip
+
+      - name: Upload Windows ZIP
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
+        with:
+          files: 评论情感分析-Windows.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-ZIP
+          path: 评论情感分析-Windows.zip

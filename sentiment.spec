@@ -1,14 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
 PyInstaller 打包配置 - 中文评论分析工具
-使用 --onedir 模式，生成 macOS .app
+跨平台支持：macOS / Windows
 """
 
 import os
 import sys
+import platform
 
 block_cipher = None
 BASE = os.path.dirname(os.path.abspath(SPEC))
+IS_MACOS = platform.system() == 'Darwin'
+IS_WINDOWS = platform.system() == 'Windows'
 
 # ── 数据文件 ──
 datas = [
@@ -30,29 +33,38 @@ import snownlp
 snownlp_dir = os.path.dirname(snownlp.__file__)
 datas.append((snownlp_dir, 'snownlp'))
 
+# ── 平台特定的隐藏导入 ──
+hidden_imports = [
+    # Flask
+    'flask', 'flask_cors', 'werkzeug', 'jinja2',
+    # 数据处理
+    'pandas', 'openpyxl', 'chardet',
+    # 分词
+    'jieba', 'jieba.posseg', 'jieba.finalseg',
+    # 可视化
+    'matplotlib', 'matplotlib.backends', 'matplotlib.backends.backend_agg',
+    'wordcloud',
+    # 情感分析
+    'snownlp', 'snownlp.sentiment',
+    # 其他
+    'PIL', 'PIL.Image', 'PIL.ImageDraw',
+]
+
+# 平台特定的 pywebview 后端
+if IS_MACOS:
+    hidden_imports.append('webview.platforms.cocoa')
+elif IS_WINDOWS:
+    hidden_imports.append('webview.platforms.edgechromium')
+    hidden_imports.append('webview.platforms.mshtml')
+    hidden_imports.append('clr')
+
 # ── 分析配置 ──
 a = Analysis(
     [os.path.join(BASE, 'main.py')],
     pathex=[BASE],
     binaries=[],
     datas=datas,
-    hiddenimports=[
-        # Flask
-        'flask', 'flask_cors', 'werkzeug', 'jinja2',
-        # pywebview
-        'webview', 'webview.platforms.cocoa',
-        # 数据处理
-        'pandas', 'openpyxl', 'chardet',
-        # 分词
-        'jieba', 'jieba.posseg', 'jieba.finalseg',
-        # 可视化
-        'matplotlib', 'matplotlib.backends', 'matplotlib.backends.backend_agg',
-        'wordcloud',
-        # 情感分析
-        'snownlp', 'snownlp.sentiment',
-        # 其他
-        'PIL', 'PIL.Image', 'PIL.ImageDraw',
-    ],
+    hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -90,13 +102,14 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,  # 不使用 UPX，避免兼容性问题
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=os.path.join(BASE, 'icons', 'icon_256x256.png') if IS_WINDOWS else None,
 )
 
 coll = COLLECT(
@@ -110,17 +123,19 @@ coll = COLLECT(
     name='评论情感分析',
 )
 
-app = BUNDLE(
-    coll,
-    name='评论情感分析.app',
-    icon=os.path.join(BASE, 'icons', 'icon.icns'),
-    bundle_identifier='com.sentiment.analyzer',
-    info_plist={
-        'CFBundleName': '评论情感分析',
-        'CFBundleDisplayName': '评论情感分析',
-        'CFBundleShortVersionString': '1.0.0',
-        'CFBundleVersion': '1.0.0',
-        'NSHighResolutionCapable': True,
-        'NSRequiresAquaSystemAppearance': False,
-    },
-)
+# macOS 专用：生成 .app bundle
+if IS_MACOS:
+    app = BUNDLE(
+        coll,
+        name='评论情感分析.app',
+        icon=os.path.join(BASE, 'icons', 'icon.icns'),
+        bundle_identifier='com.sentiment.analyzer',
+        info_plist={
+            'CFBundleName': '评论情感分析',
+            'CFBundleDisplayName': '评论情感分析',
+            'CFBundleShortVersionString': '1.0.0',
+            'CFBundleVersion': '1.0.0',
+            'NSHighResolutionCapable': True,
+            'NSRequiresAquaSystemAppearance': False,
+        },
+    )
